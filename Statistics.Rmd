@@ -1,0 +1,97 @@
+---
+title: "Statistics"
+author: "Puxin"
+date: "August 30, 2016"
+output: html_document
+---
+
+## Basic Statistics
+
+### Histograms and Distributions
+
+#### Looking at distributions by using histograms
+```{r, fig.height=3, fig.width=4}
+library(Hmisc)
+hist(iris$Sepal.Width, breaks = 10)
+describe(iris)
+```
+
+* Some distribution not normal, for example:
+        + Bimodal
+        + Positively skewed (left)
+        + Negatively skewed (right)
+        + Uniform (platykurtic)
+        + High peak (leptokurtic)
+
+### Scales of Measurement 
+
+#### Z-scale / z-score
+
+* scale()
+```{r, fig.height=3, fig.width=4}
+z.Sepal.Width = (iris$Sepal.Width - mean(iris$Sepal.Width)) /sd(iris$Sepal.Width)
+hist(z.Sepal.Width, breaks = 10)
+###
+hist(scale(iris$Sepal.Width), breaks = 10)
+```
+
+
+### Measures of central tendency
+```{r}
+# mean
+mean(iris$Sepal.Width)
+#median
+median(iris$Sepal.Width)
+#mode
+Mode <- function(x) {
+  ux <- unique(x)
+  ux[which.max(tabulate(match(x, ux)))]
+}
+Mode(iris$Sepal.Width)
+```
+
+### Measures of variability
+```{r}
+var(iris$Sepal.Width)
+sd(iris$Sepal.Width)^2
+```
+
+## Statistical tests
+
+* z-test
+* t-test (simple sample)
+* t-test (dependent)
+* t-test (independent)
+
+
+#### plot t-distribution
+```{r}
+# Generate a vector of 100 values between -4 and 4
+x <- seq(-4,4,length = 100)
+# Simulate the t-distribution
+y_1 <- dt(x, df = 4)
+y_2 <- dt(x, df = 6)
+y_3 <- dt(x, df = 8)
+y_4 <- dt(x, df = 10)
+y_5 <- dt(x, df = 12)
+# Plot the t-distributions
+plot(x, y_1, type = "l", lwd = 2, xlab = "t-value", ylab = "Density", 
+     main = "Comparison of t-distributions", col = "black")
+lines(x, y_2, col = "red")
+lines(x, y_3, col = "orange")
+lines(x, y_4, col = "green")
+lines(x, y_5, col = "blue")
+# Add a legend
+legend("topright", c("df = 4", "df = 6", "df = 8", "df = 10", "df = 12"), 
+       col = c("black", "red", "orange", "green", "blue"), 
+       title = "t-distributions", lty = 1)
+```
+
+
+
+
+
+
+
+
+

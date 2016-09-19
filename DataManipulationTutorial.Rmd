@@ -1,0 +1,489 @@
+---
+title: "Data Manipulation Tutorial"
+author: Puxin
+date: "28 Aug 2016"
+output: html_document
+---
+
+tidyr & lubridate & stringr & dplyr & data.table & some tricks
+
+## _tidyr_
+
+```{r}
+#setwd("/home/creatrol/ws/R/Tutorials")
+#library(devtools)
+#devtools::install_github("hadley/tibble")
+#devtools::install_github("hadley/dplyr")
+#devtools::install_github("hadley/tidyr")
+library(dplyr)
+library(tidyr)
+```
+
+### Gather columns into key-value pairs
+```{r}
+wide_df <- data.frame(col = c("X_a","y_b"),
+                      A = c(1,2), b = c(2,5), C= c(3,6))
+wide_df
+(long_df <- gather(wide_df, my_key, my_val, - col))
+```
+
+### Spread key-value pairs into columns
+```{r}
+spread(long_df, my_key, my_val)
+```
+
+### Separate one column intp multiple
+
+* 4th arguement (... ,sep = "_")
+```{r}
+(separate_df <- separate(wide_df, col, c("upper", "lower")))
+```
+
+### Unite multiple columns into one
+
+* 4th arguement (... ,sep = "_")
+```{r}
+(unite_df <- unite(separate_df, col, upper, lower, sep = "-"))
+```
+
+### arrange
+```{r}
+arrange(separate_df, lower)
+arrange(separate_df, desc(lower))
+```
+
+### Some Issue in practical case
+```{r}
+# first  --  To handle the problem with "." can not be as sep
+iris.tidy <- gather(iris, Part.Measure, Value, -Species)
+### way1
+iris.tidy2 <- separate(iris.tidy, Part.Measure, c("Part", "Measure"), sep = "\\.")
+### way2
+iris.tidy2 <- iris.tidy %>% 
+  mutate(Part.Measure = gsub(pattern = "\\.", replacement = "_", x = Part.Measure)) %>% 
+  separate(Part.Measure, into = c("Part", "Measure"), sep= "_")
+# second  --  To handle the error: Duplicate identifiers for rows
+iris.tidy2$row <- 1:nrow(iris.tidy2)
+iris.tidy <- spread(iris.tidy2, Species, Value)
+iris.tidy2 <- iris.tidy2[,1:4]
+```
+
+---
+
+## _lubridate_
+
+* date & time
+
+```{r}
+library(lubridate)
+```
+
+### Basic functions
+```{r}
+ymd("2016-08-31")
+ymd("2016 August 31")
+mdy("August 31, 2016")
+hms("13:30:09")
+ymd_hms("2016/08/31 13.30.09")
+```
+
+---
+
+## _stringr_
+
+```{r}
+library(stringr)
+```
+
+### key functions
+```{r}
+# Trim leading and trailing white space
+str_trim("    this is a    test   ")
+# Pad string with x
+str_pad("22343", width = 7, side = "left", pad = "x")
+# Create character vector of names
+friend <- c("Sarah", "Tom", "Tony")
+# Search for string in vector
+str_detect(friend, "Tony")
+# Replace string in vector
+str_replace(friend, "Tony", "David")
+tolower("I am Not TALKING BOY!!")
+toupper("i am a good one..")
+```
+
+----
+
+## _dplyr_
+
+```{r}
+#setwd("/home/creatrol/ws/R/Tutorials")
+library(dplyr)
+chicago <- readRDS("chicago.rds")
+# To show all columns
+options(dplyr.width = Inf)
+```
+
+### tbl
+
+* Convert data.frame to table
+
+```{r}
+chicagoTable <- tbl_df(chicago)
+class(chicago)
+class(chicagoTable)
+names(chicago)
+names(chicagoTable)
+cities <- chicagoTable$city
+head(cities)
+summary(chicago)
+summary(chicagoTable)
+chicagoTable
+str(chicago)
+glimpse(chicagoTable)
+unique(chicagoTable$city)
+chicagoTable[1,1]
+```
+
+* change labels
+
+```{r}
+changeName <- c("chic" = "chicago", "ny" = "newYork")
+chicagoTable$cityName <- changeName[chicagoTable$city]
+glimpse(chicagoTable)
+chicago$cityName <- changeName[chicago$city]
+glimpse(chicago)
+```
+
+### Select (column)
+
+* starts_with("X"): every name that starts with "X",
+* ends_with("X"): every name that ends with "X",
+* contains("X"): every name that contains "X",
+* matches("X"): every name that matches "X", where "X" can be a regular expression,
+* num_range("x", 1:5): the variables named x01, x02, x03, x04 and x05,
+* one_of(x): every name that appears in x, which should be a character vector.
+
+```{r}
+chicago <- readRDS("chicago.rds")
+dim(chicago)
+head(select(chicago,1:5))
+names(chicago)[1:3]
+head(select(chicago,city:dptp))
+head(select(chicagoTable,city:dptp))
+head(select(chicago,1:3, pm25tmean2),10)
+head(select(chicago, -(city:dptp)))
+#################################### Equivalent base R
+i <- match("city", names(chicago))
+j <- match("dptp", names(chicago))
+head(chicago[,-(i:j)])
+####################################
+head(select(chicago, starts_with("d")))
+head(select(chicago, ends_with("2")))
+head(select(chicago, matches("mean")))
+head(select(chicago, contains("mean")))
+```
+
+### Filter (row)
+
+```{r}
+chi.f <- filter(chicago, pm25tmean2 > 30)
+head(select(chi.f, 1:3, pm25tmean2), 10)
+chi.f <- filter(chicagoTable, pm25tmean2 > 30)
+head(select(chi.f, 1:3, pm25tmean2), 10)
+chi.f <- filter(chicago, pm25tmean2 > 30 & tmpd > 80)
+head(select(chi.f, 1:3, pm25tmean2, tmpd), 10)
+```
+
+### Arrange (reorder row)
+
+* Ascending
+
+```{r}
+chicago <- arrange(chicago,date)
+head(select(chicago,date,pm25tmean2),3)
+tail(select(chicago,date,pm25tmean2),3)
+chicagoTable <- arrange(chicagoTable,date)
+head(select(chicagoTable,date,pm25tmean2),3)
+head(select(chicagoTable,date,pm25tmean2),3)
+```
+
+* Descending
+
+```{r}
+chicago <- arrange(chicago, desc(date))
+head(select(chicago,date,pm25tmean2),3)
+tail(select(chicago,date,pm25tmean2),3)
+```
+
+### Rename (variables / column)
+
+```{r}
+head(chicago[,1:5],3)
+chicago <- rename(chicago, dewpoint = dptp,
+                  pm25 = pm25tmean2)
+head(chicago[,1:5],3)
+```
+
+### Mutate
+
+```{r}
+chicago <- mutate(chicago,
+                  pm25detrend = pm25 - mean(pm25, na.rm = T))
+head(select(chicago, pm25, pm25detrend))
+tail(select(chicago, pm25, pm25detrend))
+```
+
+* ifelse
+
+```{r}
+chicago <- mutate(chicago, 
+                  tempcatifelse = ifelse(tmpd <= 80, "cold", "hot"))
+head(chicago,3)
+```
+
+### Group_by (statistics summarize) summarize
+
+* One sample
+
+```{r}
+head(chicago,3)
+chicago <- mutate(chicago,
+                  tempcat = factor(1 * (tmpd > 80),
+                            labels = c("cold","hot")))
+head(chicago,3)
+hotcold <- group_by(chicago, tempcat)
+class(hotcold)
+summarize(hotcold, pm25 = mean(pm25, na.rm = T),
+          o3 = max(o3tmean2),
+          no2 = median(no2tmean2))
+```
+
+#### Aggregate functions
+
+* min(x) - minimum value of vector x.
+* max(x) - maximum value of vector x.
+* mean(x) - mean value of vector x.
+* median(x) - median value of vector x.
+* quantile(x, p) - pth quantile of vector x.
+* sd(x) - standard deviation of vector x.
+* var(x) - variance of vector x.
+* IQR(x) - Inter Quartile Range (IQR) of vector x.
+* diff(range(x)) - total range of vector x.
+
+#### dplyr aggregate functions
+
+* first(x) - The first element of vector x.
+* last(x) - The last element of vector x.
+* nth(x, n) - The nth element of vector x.
+* n() - The number of rows in the data.frame or group of observations that summarise() describes.
+* n_distinct(x) - The number of unique values in vector x.
+
+```{r}
+chicago <- readRDS("chicago.rds")
+head(chicago)
+summarise(chicago, num = nth(tmpd, 2))
+summarise(chicago, uniqueNumber = n_distinct(city))
+```
+
+### %>% the pipe operator
+
+```{r}
+chicago %>% mutate(month = as.POSIXlt(date)$mon + 1) %>% group_by(month) %>% summarize(pm25 = mean(pm25tmean2, na.rm = T),
+          o3 = max(o3tmean2, na.rm = T),
+          no2 = median(no2tmean2, na.rm = T))
+```
+
+### dplyr and mySQL databases
+```{r, eval=FALSE}
+# Set up a connection to the mysql database
+my_db <- src_mysql(dbname = "dplyr", 
+                   host = "courses.csrrinzqubik.us-east-1.rds.amazonaws.com", 
+                   port = 3306, 
+                   user = "student",
+                   password = "datacamp")
+
+# Reference a table within that source: nycflights
+nycflights <- tbl(my_db, "dplyr")
+```
+
+
+---
+
+## _data.table_
+
+* the structure of data.table is DT[i,j,by]
+
+### Create and Subset (filter row i)
+```{r}
+library(data.table)
+DT <- data.table(x = c("A", "B", "C"), y = 1:9, z = (2:10) *2)
+DT[3:4]                                         # no need ","
+DT[.N]                                          # the last row
+```
+
+### Select / Summarize Columns and Add function (j)
+```{r}
+# select and mutate in dplyr (a little diff)
+DT[,.(x, y, diff = z-y, Ymean = mean(y))]
+# summarize in dplyr
+DT[,.(Zmean = mean(z), Yvar = var(y))]
+# Insert functions
+DT[, plot(y,z)]
+DT[, {print(x)
+      hist(z)
+      NULL   }]
+```
+
+### Doing (j) by Group
+```{r}
+DT[, .N, by = .(x)]                                 # the number of rows in this group
+DT[,.(Ymean = mean(y)), by = .(x)]
+DT[, .(y, Zmean = mean(z)), by = .(Grp = y %% 2)]
+DT[, .(Zmean = mean(z)), by = .(Grp = y %% 2)]
+DT[, mean(z), by = y %% 2]
+DT[2:7, mean(z), by = y %% 2]
+```
+
+### Chaining
+```{r}
+ans <- DT[2:9, mean(z), by = x]
+ans[order(x)]
+####################################### by Chaining
+ans <- DT[2:9, mean(z), by = x][order(x)]
+ans
+``` 
+
+### Subset of Data (.SD) - apply same function to columns (summarize)
+```{r}
+DT[, lapply(.SD, median), by = x]
+DT[, lapply(.SD, median), .SDcols = 2:3]
+DT[, lapply(.SD, median), .SDcols = 2:3, by = x]
+DT[, lapply(.SD, median), by = x, .SDcols = c("y","z")]
+DT[, .(lapply(.SD, median)), by = x, .SDcols = c("y","z")]
+DT[, .(lapply(.SD, median), n = .N), by = .(x, y>5), .SDcols = c("y","z")]
+```
+
+### Using := in j
+```{r}
+# Add and update columns (mutate in dplyr)
+DT[, c("j","k") := .(rev(y),10:2)];DT
+# Remove the columns
+DT[, j := NULL];DT
+DT[, c("k") := NULL];DT
+# Other way to remove
+DT[, c("j","k") := .(rev(y),10:2)]
+Mycols <- c("j", "k")
+DT[, (Mycols) := NULL];DT
+# Functional
+DT[, `:=` (j = rev(y), k = 10:2)];DT
+# by Group
+DT[, c := sum(y), by = x];DT
+```
+
+### Using set()
+```{r}
+for (i in 1:9) DT[, set := i+1]
+DT
+###################### by set(DT, index, column, value)
+for (i in 1:9) set(DT, i , 7L, i + 1)
+DT
+# rename column
+setnames(DT, "y", "yrename")
+names(DT)
+# order columns
+setcolorder(DT, c("set", "x", "yrename", "k", "j", "c", "z"))
+names(DT)
+```
+
+### Indexing (filter)
+```{r}
+DT[x == "A"]
+DT[x %in% c("A", "B")]
+# Another way
+(w <- DT[, x == "A"])
+DT[w]
+```
+
+### Keys
+```{r}
+# create and use
+setkey(DT,x)
+DT
+DT["A"]
+# mult
+DT["A", mult = "first"]
+DT["A", mult = "last"]
+# nomatch
+DT[c("A", "D")]
+DT[c("A", "D"), nomatch = NA] # default
+DT[c("A", "D"), nomatch = 0]
+# a two-column key
+setkey(DT, x, z)
+DT["A"]
+DT[.("A", 10)]
+```
+
+### Rolling Joins
+```{r}
+DT <- DT[, .(x,k,z)]
+DT
+setkey(DT, x, k)
+DT[.("B")]
+DT[.("B", 5)]
+# Ordered joins
+DT[.("B", 5), roll = TRUE]        # forwards by the second key
+DT[.("B", 5), roll = "nearest"]   # nearest by the second key
+# Forwards and backwards
+DT[.("B", 5), roll = +Inf]        # always forward
+DT[.("B", 5), roll = -Inf]        # always backword
+# Limited saleness
+DT[.("B", 8), roll = 1]          # forward with limited steps
+DT[.("B", 8), roll = 2]
+DT[.("B", 7), roll = -2]         # backward with limited steps
+DT[.("B", 7), roll = -1]
+# End control
+DT[.("B", 11:12)]
+DT[.("B", 11:12), roll = TRUE]
+DT[.("B", 11:12), roll = TRUE, rollends = FALSE]
+```
+
+## Tricks
+
+* missing and outliers
+
+### Missing values
+
+```{r}
+df <- data.frame(A = c(1,NA,8,NA),
+                 B = c(3,NA,88,23),
+                 C = c(2,45,3,1))
+is.na(df)
+# Check if there is a NA
+any(is.na(df))
+# Count the # of NA
+sum(is.na(df))
+# summary
+summary(df)
+# Find rows with no NA
+complete.cases(df) 
+# Another way to remove rows with NAs
+na.omit(df)
+```
+
+### Outliers and obvious errors
+```{r}
+set.seed(10)
+x <- c(rnorm(30, mean = 15, sd = 5), -5, 28, 35)
+# View a boxplot
+boxplot(x, horizontal = TRUE)
+# Create another dataset
+df2 <- data.frame(A = rnorm(100,50,10),
+                  B = c(rnorm(99,50,10), 500),
+                  C = c(rnorm(99,50,10), -1))
+# View summary
+summary(df2)
+# View histogram
+hist(df2$B, breaks = 20)
+# View boxplot
+boxplot(df2)
+```
