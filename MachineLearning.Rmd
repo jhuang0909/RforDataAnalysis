@@ -1,5 +1,5 @@
 ---
-title: "MachineLearning"
+title: "MachineLearningTutorial"
 author: "Puxin"
 date: "September 19, 2016"
 output: html_document
@@ -2682,3 +2682,25 @@ accuracy(fcast,ts1Test)
   * Be careful how far you predict (extrapolation)
   * Be wary of dependencies over time
 * See [quantmod](http://cran.r-project.org/web/packages/quantmod/quantmod.pdf) or [quandl](http://www.quandl.com/help/packages/r) packages for finance-related problems.
+
+
+
+## Good blogs
+
+[SVM](http://blog.csdn.net/yujunbeta/article/details/17023287)
+
+[LogisticRegression](http://blog.csdn.net/yujunbeta/article/details/17926443)
+
+[NeuralNetwork](http://blog.csdn.net/yujunbeta/article/details/17201103)
+
+[NaiveBayes](http://blog.csdn.net/yujunbeta/article/details/16355857)
+
+[DecisionTree](http://blog.csdn.net/yujunbeta/article/details/14986219)
+
+[K-Means](http://blog.csdn.net/yujunbeta/article/details/14648343)
+
+
+
+
+
+
