@@ -1,0 +1,207 @@
+---
+output: html_document
+runtime: shiny
+---
+---
+title: "Predictive Analytics Demo on Iris"
+author: "Puxin"
+date: "November 9, 2016"
+output: html_document
+runtime: shiny
+---
+
+# Have a Basic look
+```{r, echo = FALSE, message=FALSE}
+library(Hmisc)
+library(e1071)
+head(iris)
+describe(iris)
+```
+
+----------------------------------
+
+# Have a interactive Plot
+```{r, echo=FALSE, message=FALSE}
+library(shiny)
+library(ggplot2)
+inputPanel(
+  selectInput("xchoice", "choose x",
+              choice = c("Sepal.Length","Petal.Length"), selected = "Sepal.Length"),
+  selectInput("ychoice", "choose y ",
+             choice = c("Sepal.Width","Petal.Width"), selected = "Sepal.Width"),
+  selectInput("diff", "shape or color",
+              choices = c("color", "shape"), selected = "color")
+)
+inputPanel(
+  sliderInput("lowerBound", "choose the lower bound", min = 0, max = 8, value = 4, step = 0.1),
+  sliderInput("upperBound", "choose the upper bound", min = 0, max = 8, value = 7, step = 0.1)  
+)
+```
+
+```{r}
+renderPlot({
+  if (input$diff == "color"){g <- ggplot(iris, aes_string(input$xchoice, input$ychoice, col = "Species"))+ geom_point()}
+  else if (input$diff == "shape"){g <- ggplot(iris, aes_string(input$xchoice, input$ychoice, shape = "Species"))+ geom_point()}
+  g <- g + geom_vline(aes(xintercept = input$lowerBound)) + geom_vline(aes(xintercept = input$upperBound))
+  rect <- data.frame(xmin=input$lowerBound, xmax=input$upperBound, ymin=-Inf, ymax=Inf)
+  g <- g + geom_smooth() 
+  g + geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax),
+              color="black", fill = "bisque1", alpha=0.3, inherit.aes = FALSE) + 
+    xlim(input$lowerBound -0.2, input$upperBound +0.2)
+}
+)
+```
+
+--------------
+
+# Regression focusing on Petal
+```{r}
+names <- colnames(iris)
+data <- iris[, names[c(1,2,5)]]
+colnames(data)
+```
+
+------------------
+
+## Linear Regession
+
+* Apply linear regression on each `Species`
+```{r, message=FALSE}
+library(caret)
+library(snn)
+library(kernlab)
+library(randomForest)
+a.lmfit <- train(Sepal.Width~Sepal.Length, data[data$Species == "setosa",], method = "lm")
+b.lmfit <- train(Sepal.Width~Sepal.Length, data[data$Species == "versicolor",], method = "lm")
+c.lmfit <- train(Sepal.Width~Sepal.Length, data[data$Species == "virginica",], method = "lm")
+g <- ggplot(data, aes(Sepal.Length, Sepal.Width, col = Species)) + geom_point()
+g +  geom_abline(intercept = coef(a.lmfit$finalModel)[1], 
+                slope = coef(a.lmfit$finalModel)[2], col="red")+
+  geom_abline(intercept = coef(b.lmfit$finalModel)[1], 
+                slope = coef(b.lmfit$finalModel)[2], col="green")+
+  geom_abline(intercept = coef(c.lmfit$finalModel)[1], 
+                slope = coef(c.lmfit$finalModel)[2], col="blue")
+```
+
+```{r, message=FALSE}
+library(caret)
+library(snn)
+library(kernlab)
+library(randomForest)
+a.lmfit <- train(Sepal.Width~Sepal.Length, data[data$Species == "setosa",], method = "lm")
+b.lmfit <- train(Sepal.Width~Sepal.Length, data[data$Species == "versicolor",], method = "lm")
+c.lmfit <- train(Sepal.Width~Sepal.Length, data[data$Species == "virginica",], method = "lm")
+g <- ggplot(data, aes(Sepal.Length, Sepal.Width)) + geom_point() +
+    facet_grid(.~ Species)
+lmr <- data.frame(Species = c("setosa","versicolor","virginica"),
+                  intercepts = c(coef(a.lmfit$finalModel)[1], coef(b.lmfit$finalModel)[1],
+                                 coef(c.lmfit$finalModel)[1]),
+                  slopes = c(coef(a.lmfit$finalModel)[2],coef(b.lmfit$finalModel)[2],
+                             coef(c.lmfit$finalModel)[2]))
+g +  geom_abline(data = lmr, aes(intercept = intercepts, slope = slopes))
+```
+
+### summary of LR 
+
+* on `setosa`
+```{r, echo=FALSE}
+summary(a.lmfit)
+```
+
+* on `versicolor`
+```{r, echo=FALSE}
+summary(b.lmfit)
+```
+
+* on `virginica`
+```{r, echo=FALSE}
+summary(c.lmfit)
+```
+
+----------------
+
+# Classification on Species
+
+* by `Sepal.Width` and `Sepal.Length`
+
+* prepare for superplane plot
+```{r}
+xmin <- min(data$Sepal.Length)-1
+xmax <- max(data$Sepal.Length)+1
+ymin <- min(data$Sepal.Width)-1
+ymax <- max(data$Sepal.Width)+1
+sep <- 300
+x <- rep(seq(xmin, xmax,(xmax - xmin)/(sep-1)), each = sep)
+y <- rep(seq(ymin, ymax,(ymax - ymin)/(sep-1)), time = sep)
+x.df <- data.frame(Sepal.Length = x)
+y.df <- data.frame(Sepal.Width = y)
+predictiveData <- cbind(x.df,y.df)
+data <- data[data$Species %in% c("setosa","virginica"),]
+data$Species <- factor(data$Species)
+g <- ggplot(data, aes(Sepal.Length, Sepal.Width, col = Species)) + geom_point()
+```
+
+---------
+
+## random forest
+
+```{r, echo=FALSE}
+inputPanel(
+  numericInput("nCV1", "use how many cross validations (2~10): ", min = 2, max = 10, value = 5)
+)
+inputPanel(
+  numericInput("mmtry", "use mtry (1~10): ", min = 1, max = 10, value = 5)
+)
+```
+
+```{r}
+renderPlot({
+  fitControl <- trainControl(method = "repeatedcv", number = input$nCV1, repeats = 10)
+  rfmodel <- train(Species ~ Sepal.Length + Sepal.Width,data, method = 'rf', 
+                 trControl = fitControl, tuneControl = expand.grid(mtry = input$mmtry))
+  prediction <- predict(rfmodel, predictiveData)
+  prediction <- data.frame(prediction)
+  colnames(prediction)[1] <- "Species"
+  prediction <- cbind(predictiveData, prediction)
+  g + geom_point(data = prediction, aes(x = Sepal.Length, y = Sepal.Width, col = Species), 
+               alpha = 0.02)
+}
+)
+```
+
+----
+
+## SVM
+
+```{r, echo=FALSE}
+inputPanel(
+  numericInput("nCV2", "use how many cross validations (2~10): ", min = 2, max = 10, value = 5)
+)
+inputPanel(
+  selectInput("svmType", "choose the type of SVM: ", 
+              choices = c("svmLinear", "svmPoly","svmRadial"), selected = "svmLinear")
+)
+```
+
+```{r}
+renderPlot({
+  fitControl <- trainControl(method = "repeatedcv", number = input$nCV2, repeats = 10)
+  svmmodel <- train(Species ~ Sepal.Length + Sepal.Width,data, method = input$svmType, 
+                 trControl = fitControl)
+  prediction <- predict(svmmodel, predictiveData)
+  prediction <- data.frame(prediction)
+  colnames(prediction)[1] <- "Species"
+  prediction <- cbind(predictiveData, prediction)
+  g + geom_point(data = prediction, aes(x = Sepal.Length, y = Sepal.Width, col = Species), 
+               alpha = 0.02)
+}
+)
+```
+
+----
+
+Link for more choice: 
+[caret train table](https://topepo.github.io/caret/modelList.html)
+
+
+
